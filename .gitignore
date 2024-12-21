@@ -31,3 +31,4 @@ go.work
 
 # env files
 *.env
+secrets.env
