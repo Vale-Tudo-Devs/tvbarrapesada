@@ -1,18 +1,25 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/vale-tudo-devs/tvbarrapesada/remotecontrol/pkg/bot"
+	"github.com/vale-tudo-devs/tvbarrapesada/remotecontrol/pkg/playlist"
 )
 
 func main() {
+	ctx := context.Background()
 	bot, err := bot.New()
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	if os.Getenv("SKIP_CHANNEL_DB_UPDATE") == "" {
+		playlist.UpdatePlaylist(ctx)
 	}
 
 	err = bot.DiscordSession.Open()
@@ -34,4 +41,5 @@ func main() {
 	if err != nil {
 		log.Printf("Error closing Discord session: %v\n", err)
 	}
+
 }

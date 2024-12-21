@@ -100,3 +100,20 @@ func (r *RedisStore) GetChannelByID(ctx context.Context, id string) (*TvChannel,
 
 	return channel, nil
 }
+
+func (r *RedisStore) DeleteAll(ctx context.Context) error {
+	pattern := fmt.Sprintf("%s:*", r.Prefix)
+	iter := r.Client.Scan(ctx, 0, pattern, 0).Iterator()
+
+	for iter.Next(ctx) {
+		if err := r.Client.Del(ctx, iter.Val()).Err(); err != nil {
+			return fmt.Errorf("failed to delete key %s: %w", iter.Val(), err)
+		}
+	}
+
+	if err := iter.Err(); err != nil {
+		return fmt.Errorf("scan failed: %w", err)
+	}
+
+	return nil
+}
