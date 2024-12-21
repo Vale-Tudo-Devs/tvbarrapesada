@@ -18,6 +18,7 @@ type ChannelCommand struct {
 }
 
 func (r *RedisStore) Play(ctx context.Context, id int64) error {
+	r.Prefix = "channel"
 	tvChannel, err := r.GetChannelByID(ctx, id)
 	if err != nil {
 		return fmt.Errorf("failed to get channel by id: %w", err)
@@ -39,6 +40,7 @@ func (r *RedisStore) Play(ctx context.Context, id int64) error {
 }
 
 func (r *RedisStore) Stop(ctx context.Context) error {
+	r.Prefix = "channel"
 	command := ChannelCommand{
 		Command: "stop",
 	}

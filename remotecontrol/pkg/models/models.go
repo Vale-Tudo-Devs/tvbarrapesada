@@ -99,6 +99,8 @@ func (r *RedisStore) GetChannelByID(ctx context.Context, id int64) (*TvChannel, 
 		URL:  data["url"],
 	}
 
+	log.Printf("Retrieved channel %s", channel.Name)
+
 	return channel, nil
 }
 
