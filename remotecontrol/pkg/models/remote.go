@@ -53,14 +53,3 @@ func (r *RedisStore) Stop(ctx context.Context) error {
 	log.Printf("Sending command: %+v", jsonData)
 	return r.Client.Publish(ctx, remoteControlChannel, jsonData).Err()
 }
-
-func (r *RedisStore) StartDevSub(ctx context.Context) {
-	pubsub := r.Client.PSubscribe(ctx, fmt.Sprintf("%s:*", remoteControlChannel))
-	defer pubsub.Close()
-
-	// Listen on channel
-	ch := pubsub.Channel()
-	for msg := range ch {
-		log.Printf("Received message: %s", msg.Payload)
-	}
-}

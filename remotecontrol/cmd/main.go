@@ -8,13 +8,12 @@ import (
 	"syscall"
 
 	"github.com/vale-tudo-devs/tvbarrapesada/remotecontrol/pkg/bot"
-	"github.com/vale-tudo-devs/tvbarrapesada/remotecontrol/pkg/models"
 	"github.com/vale-tudo-devs/tvbarrapesada/remotecontrol/pkg/playlist"
 )
 
 func main() {
 	ctx := context.Background()
-	bot, err := bot.New()
+	b, err := bot.New()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -23,22 +22,13 @@ func main() {
 		playlist.UpdatePlaylist(ctx)
 	}
 
-	// Start redis sub for local dev
-
-	if os.Getenv("REDIS_LOCAL_DEV") != "" {
-		log.Printf("Starting local dev redis sub")
-		r, err := models.NewAuthenticatedRedisClient(ctx)
-		if err != nil {
-			log.Fatal(err)
-		}
-		go r.StartDevSub(ctx)
-	}
-
-	err = bot.DiscordSession.Open()
+	err = b.DiscordSession.Open()
 	if err != nil {
 		log.Println("error opening connection,", err)
 		return
 	}
+
+	bot.AddCommands(b.DiscordSession)
 	log.Println("Discord Bot is now running.")
 
 	// Make channel to keep bot running and handle graceful shutdown
@@ -49,7 +39,7 @@ func main() {
 	<-stop
 	log.Println("Gracefully shutting down...")
 
-	err = bot.DiscordSession.Close()
+	err = b.DiscordSession.Close()
 	if err != nil {
 		log.Printf("Error closing Discord session: %v\n", err)
 	}
