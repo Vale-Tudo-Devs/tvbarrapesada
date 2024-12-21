@@ -1,11 +1,13 @@
 package bot
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/vale-tudo-devs/tvbarrapesada/remotecontrol/pkg/models"
 )
 
 type Bot struct {
@@ -37,7 +39,14 @@ func New() (*Bot, error) {
 }
 
 func tvHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
+	ctx := context.Background()
 	if i.Type != discordgo.InteractionApplicationCommand {
+		return
+	}
+
+	r, err := models.NewAuthenticatedRedisClient(ctx)
+	if err != nil {
+		log.Printf("Error creating redis client: %v\n", err)
 		return
 	}
 
@@ -57,7 +66,7 @@ func tvHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		},
 	}
 
-	_, err := s.ApplicationCommandCreate(s.State.User.ID, "", tvCommand)
+	_, err = s.ApplicationCommandCreate(s.State.User.ID, "", tvCommand)
 	if err != nil {
 		log.Printf("Error creating slash command: %v\n", err)
 		return
@@ -77,13 +86,15 @@ func tvHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
 
 	switch i.ApplicationCommandData().Name {
 	case "tv":
+		channelId := i.ApplicationCommandData().Options[0].IntValue()
+		log.Printf("TV command received from user: %s - channelId: %d", i.Member.User.Username, channelId)
 
-		log.Printf("TV command received from user: %s - channelId: %d", i.Member.User.Username, i.ApplicationCommandData().Options[0].IntValue())
-
-		// Send a message to redis here
-
+		err := r.Play(ctx, channelId)
+		if err != nil {
+			log.Printf("Error sending command to redis: %v\n", err)
+		}
 		// Respond to the interaction
-		err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+		err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{
 				Content: fmt.Sprintf("TV channel set to %d", i.ApplicationCommandData().Options[0].IntValue()),
@@ -96,7 +107,7 @@ func tvHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	case "stop":
 		log.Printf("Stop command received from user: %s", i.Member.User.Username)
 
-		// Send a message to redis here
+		r.Stop(ctx)
 
 		// Respond to the interaction
 		err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{

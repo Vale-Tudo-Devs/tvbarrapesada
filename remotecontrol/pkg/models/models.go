@@ -80,8 +80,9 @@ func (r *RedisStore) Save(ctx context.Context, tvChannel TvChannel) error {
 }
 
 // GetChannelByID retrieves channel data by ID
-func (r *RedisStore) GetChannelByID(ctx context.Context, id string) (*TvChannel, error) {
-	channelKey := fmt.Sprintf("%s:%s", r.Prefix, id)
+func (r *RedisStore) GetChannelByID(ctx context.Context, id int64) (*TvChannel, error) {
+	id_str := strconv.FormatInt(id, 10)
+	channelKey := fmt.Sprintf("%s:%s", r.Prefix, id_str)
 
 	data, err := r.Client.HGetAll(ctx, channelKey).Result()
 	if err != nil {
@@ -89,7 +90,7 @@ func (r *RedisStore) GetChannelByID(ctx context.Context, id string) (*TvChannel,
 	}
 
 	if len(data) == 0 {
-		return nil, fmt.Errorf("channel not found: %s", id)
+		return nil, fmt.Errorf("channel not found: %s", id_str)
 	}
 
 	channel := &TvChannel{

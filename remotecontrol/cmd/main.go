@@ -8,6 +8,7 @@ import (
 	"syscall"
 
 	"github.com/vale-tudo-devs/tvbarrapesada/remotecontrol/pkg/bot"
+	"github.com/vale-tudo-devs/tvbarrapesada/remotecontrol/pkg/models"
 	"github.com/vale-tudo-devs/tvbarrapesada/remotecontrol/pkg/playlist"
 )
 
@@ -20,6 +21,17 @@ func main() {
 
 	if os.Getenv("SKIP_CHANNEL_DB_UPDATE") == "" {
 		playlist.UpdatePlaylist(ctx)
+	}
+
+	// Start redis sub for local dev
+
+	if os.Getenv("REDIS_LOCAL_DEV") != "" {
+		log.Printf("Starting local dev redis sub")
+		r, err := models.NewAuthenticatedRedisClient(ctx)
+		if err != nil {
+			log.Fatal(err)
+		}
+		go r.StartDevSub(ctx)
 	}
 
 	err = bot.DiscordSession.Open()

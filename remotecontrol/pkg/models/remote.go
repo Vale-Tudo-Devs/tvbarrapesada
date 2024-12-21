@@ -17,7 +17,7 @@ type ChannelCommand struct {
 	URL     string `json:"url"`
 }
 
-func (r *RedisStore) Play(ctx context.Context, id string) error {
+func (r *RedisStore) Play(ctx context.Context, id int64) error {
 	tvChannel, err := r.GetChannelByID(ctx, id)
 	if err != nil {
 		return fmt.Errorf("failed to get channel by id: %w", err)
@@ -50,4 +50,15 @@ func (r *RedisStore) Stop(ctx context.Context) error {
 
 	log.Printf("Sending command: %+v", jsonData)
 	return r.Client.Publish(ctx, remoteControlChannel, jsonData).Err()
+}
+
+func (r *RedisStore) StartDevSub(ctx context.Context) {
+	pubsub := r.Client.PSubscribe(ctx, fmt.Sprintf("%s:*", remoteControlChannel))
+	defer pubsub.Close()
+
+	// Listen on channel
+	ch := pubsub.Channel()
+	for msg := range ch {
+		log.Printf("Received message: %s", msg.Payload)
+	}
 }
