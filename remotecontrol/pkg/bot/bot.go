@@ -50,46 +50,19 @@ func tvHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		return
 	}
 
-	// Define and create the TV command
-	tvCommand := &discordgo.ApplicationCommand{
-		Name:        "tv",
-		Description: "Set the TV channel",
-		Options: []*discordgo.ApplicationCommandOption{
-			{
-				Type:        discordgo.ApplicationCommandOptionInteger,
-				Name:        "channel",
-				Description: "Channel ID (0-20000)",
-				Required:    false,
-				MinValue:    &[]float64{0}[0],
-				MaxValue:    20000,
-			},
-		},
-	}
-
-	_, err = s.ApplicationCommandCreate(s.State.User.ID, "", tvCommand)
-	if err != nil {
-		log.Printf("Error creating slash command: %v\n", err)
-		return
-	}
-
-	// Define and create the Stop command
-	stopCommand := &discordgo.ApplicationCommand{
-		Name:        "stop",
-		Description: "Stop the TV",
-	}
-
-	_, err = s.ApplicationCommandCreate(s.State.User.ID, "", stopCommand)
-	if err != nil {
-		log.Printf("Error creating slash command: %v\n", err)
-		return
-	}
-
 	switch i.ApplicationCommandData().Name {
 	case "tv":
 		channelId := i.ApplicationCommandData().Options[0].IntValue()
 		log.Printf("TV command received from user: %s - channelId: %d", i.Member.User.Username, channelId)
 
-		err := r.Play(ctx, channelId)
+		r.Prefix = "channel"
+		channelName, err := r.GetChannelByID(ctx, channelId)
+		if err != nil {
+			log.Printf("Error getting channel by ID: %v\n", err)
+			return
+		}
+
+		err = r.Play(ctx, channelId)
 		if err != nil {
 			log.Printf("Error sending command to redis: %v\n", err)
 		}
@@ -97,7 +70,7 @@ func tvHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{
-				Content: fmt.Sprintf("TV channel set to %d", i.ApplicationCommandData().Options[0].IntValue()),
+				Content: fmt.Sprintf("TV channel set to %d - %s", channelId, channelName.Name),
 			},
 		})
 
@@ -121,5 +94,79 @@ func tvHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		}
 	default:
 		log.Printf("Unknown command: %s\n", i.ApplicationCommandData().Name)
+	}
+}
+
+func AddCommands(s *discordgo.Session) {
+	ctx := context.Background()
+	r, err := models.NewAuthenticatedRedisClient(ctx)
+	if err != nil {
+		log.Printf("Error creating redis client: %v\n", err)
+		return
+	}
+
+	// Delete all commands if updating the database
+	if os.Getenv("SKIP_CHANNEL_DB_UPDATE") == "" {
+		DeleteCommands(s)
+	}
+
+	// Define and create the TV command
+	r.Prefix = "channel"
+	channelsLen, err := r.GetCounter(ctx)
+	if err != nil {
+		log.Printf("Error getting channel count: %v\n", err)
+		return
+	}
+
+	tvCommand := &discordgo.ApplicationCommand{
+		Name:        "tv",
+		Description: "Set the TV channel",
+		Options: []*discordgo.ApplicationCommandOption{
+			{
+				Type:        discordgo.ApplicationCommandOptionInteger,
+				Name:        "channel",
+				Description: fmt.Sprintf("Channel ID (0-%d)", channelsLen),
+				Required:    false,
+				MinValue:    &[]float64{0}[0],
+				MaxValue:    float64(channelsLen),
+			},
+		},
+	}
+
+	c, err := s.ApplicationCommandCreate(s.State.User.ID, "", tvCommand)
+	if err != nil {
+		log.Printf("Error creating slash command: %v\n", err)
+		return
+	}
+	log.Printf("tv command added: %v\n", c)
+
+	// Define and create the Stop command
+	stopCommand := &discordgo.ApplicationCommand{
+		Name:        "stop",
+		Description: "Stop the TV",
+	}
+
+	c, err = s.ApplicationCommandCreate(s.State.User.ID, "", stopCommand)
+	if err != nil {
+		log.Printf("Error creating slash command: %v\n", err)
+		return
+	}
+	log.Printf("stop command added: %v\n", c)
+
+}
+
+func DeleteCommands(s *discordgo.Session) {
+	commands, err := s.ApplicationCommands(s.State.User.ID, "")
+	if err != nil {
+		log.Printf("Error getting slash commands: %v\n", err)
+		return
+	}
+
+	for _, command := range commands {
+		err = s.ApplicationCommandDelete(s.State.User.ID, "", command.ID)
+		if err != nil {
+			log.Printf("Error deleting slash command: %v\n", err)
+		}
+		log.Printf("Command deleted: %s\n", command.Name)
 	}
 }

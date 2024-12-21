@@ -64,7 +64,17 @@ func (r *RedisStore) Save(ctx context.Context, tvChannel TvChannel) error {
 		return err
 	}
 
-	// Set indexes for name and URL
+	// Increase counter
+	if err := r.Client.Incr(ctx, fmt.Sprintf("%s:counter", r.Prefix)).Err(); err != nil {
+		return err
+	}
+
+	// Set indexes for id, name and URL
+	idKey := fmt.Sprintf("%s:id:%s", r.Prefix, tvChannel.ID)
+	if err := r.Client.Set(ctx, idKey, tvChannel.ID, 0).Err(); err != nil {
+		return err
+	}
+
 	nameKey := fmt.Sprintf("%s:name:%s", r.Prefix, tvChannel.Name)
 	if err := r.Client.Set(ctx, nameKey, tvChannel.ID, 0).Err(); err != nil {
 		return err
@@ -119,4 +129,16 @@ func (r *RedisStore) DeleteAll(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (r *RedisStore) GetCounter(ctx context.Context) (int64, error) {
+	counterKey := fmt.Sprintf("%s:counter", r.Prefix)
+	count, err := r.Client.Get(ctx, counterKey).Int64()
+	if err != nil {
+		if err == redis.Nil {
+			return 0, nil // Counter doesn't exist yet
+		}
+		return 0, fmt.Errorf("failed to get counter: %w", err)
+	}
+	return count, nil
 }
