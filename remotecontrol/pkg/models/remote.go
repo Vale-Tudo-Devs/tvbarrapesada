@@ -17,7 +17,12 @@ type ChannelCommand struct {
 	URL     string `json:"url"`
 }
 
-func (s *RedisStore) Play(ctx context.Context, tvChannel TvChannel) error {
+func (r *RedisStore) Play(ctx context.Context, id string) error {
+	tvChannel, err := r.GetChannelByID(ctx, id)
+	if err != nil {
+		return fmt.Errorf("failed to get channel by id: %w", err)
+	}
+
 	command := ChannelCommand{
 		Command: "play",
 		Tittle:  tvChannel.Name,
@@ -30,10 +35,10 @@ func (s *RedisStore) Play(ctx context.Context, tvChannel TvChannel) error {
 	}
 
 	log.Printf("Sending command: %+v", jsonData)
-	return s.Client.Publish(ctx, remoteControlChannel, jsonData).Err()
+	return r.Client.Publish(ctx, remoteControlChannel, jsonData).Err()
 }
 
-func (s *RedisStore) Stop(ctx context.Context) error {
+func (r *RedisStore) Stop(ctx context.Context) error {
 	command := ChannelCommand{
 		Command: "stop",
 	}
@@ -44,5 +49,5 @@ func (s *RedisStore) Stop(ctx context.Context) error {
 	}
 
 	log.Printf("Sending command: %+v", jsonData)
-	return s.Client.Publish(ctx, remoteControlChannel, jsonData).Err()
+	return r.Client.Publish(ctx, remoteControlChannel, jsonData).Err()
 }

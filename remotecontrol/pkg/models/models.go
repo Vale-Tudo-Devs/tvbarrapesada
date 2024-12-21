@@ -21,12 +21,6 @@ type RedisStore struct {
 	Prefix string
 }
 
-const (
-	channelHashPrefix = "channel:"      // For storing full channel data
-	nameIndexPrefix   = "channel:name:" // For name->id lookup
-	urlIndexPrefix    = "channel:url:"  // For url->id lookup
-)
-
 func NewAuthenticatedRedisClient(ctx context.Context) (*RedisStore, error) {
 	addr, ok := os.LookupEnv("REDIS_ADDR")
 	if !ok {
@@ -58,10 +52,10 @@ func newRedisClient(ctx context.Context, addr, password string, db int) (*RedisS
 	return &RedisStore{Client: rdb}, nil
 }
 
-func (s *RedisStore) Save(ctx context.Context, tvChannel TvChannel) error {
+func (r *RedisStore) Save(ctx context.Context, tvChannel TvChannel) error {
 	// Set a hash with channel information
-	channelKey := fmt.Sprintf("%s:%s", s.Prefix, tvChannel.ID)
-	_, err := s.Client.HSet(ctx, channelKey, map[string]interface{}{
+	channelKey := fmt.Sprintf("%s:%s", r.Prefix, tvChannel.ID)
+	_, err := r.Client.HSet(ctx, channelKey, map[string]interface{}{
 		"id":   tvChannel.ID,
 		"name": tvChannel.Name,
 		"url":  tvChannel.URL,
@@ -71,13 +65,13 @@ func (s *RedisStore) Save(ctx context.Context, tvChannel TvChannel) error {
 	}
 
 	// Set indexes for name and URL
-	nameKey := fmt.Sprintf("%s:name:%s", s.Prefix, tvChannel.Name)
-	if err := s.Client.Set(ctx, nameKey, tvChannel.ID, 0).Err(); err != nil {
+	nameKey := fmt.Sprintf("%s:name:%s", r.Prefix, tvChannel.Name)
+	if err := r.Client.Set(ctx, nameKey, tvChannel.ID, 0).Err(); err != nil {
 		return err
 	}
 
-	urlKey := fmt.Sprintf("%s:url:%s", s.Prefix, tvChannel.URL)
-	if err := s.Client.Set(ctx, urlKey, tvChannel.ID, 0).Err(); err != nil {
+	urlKey := fmt.Sprintf("%s:url:%s", r.Prefix, tvChannel.URL)
+	if err := r.Client.Set(ctx, urlKey, tvChannel.ID, 0).Err(); err != nil {
 		return err
 	}
 
@@ -86,10 +80,10 @@ func (s *RedisStore) Save(ctx context.Context, tvChannel TvChannel) error {
 }
 
 // GetChannelByID retrieves channel data by ID
-func (s *RedisStore) GetChannelByID(ctx context.Context, id string) (*TvChannel, error) {
-	channelKey := fmt.Sprintf("%s:%s", s.Prefix, id)
+func (r *RedisStore) GetChannelByID(ctx context.Context, id string) (*TvChannel, error) {
+	channelKey := fmt.Sprintf("%s:%s", r.Prefix, id)
 
-	data, err := s.Client.HGetAll(ctx, channelKey).Result()
+	data, err := r.Client.HGetAll(ctx, channelKey).Result()
 	if err != nil {
 		return nil, err
 	}
