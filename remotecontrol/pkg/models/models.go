@@ -52,6 +52,9 @@ func newRedisClient(ctx context.Context, addr, password string, db int) (*RedisS
 	return &RedisStore{Client: rdb}, nil
 }
 
+// Save stores a TvChannel object in Redis.
+// If the operation fails, it returns an error, otherwise it returns nil.
+// The context parameter can be used to control timeout and cancellation.
 func (r *RedisStore) Save(ctx context.Context, tvChannel TvChannel) error {
 	// Set a hash with channel information
 	channelKey := fmt.Sprintf("%s:%s", r.Prefix, tvChannel.ID)
@@ -89,7 +92,9 @@ func (r *RedisStore) Save(ctx context.Context, tvChannel TvChannel) error {
 	return nil
 }
 
-// GetChannelByID retrieves channel data by ID
+// GetChannelByID retrieves a TV channel from Redis by its ID.
+// It takes a context.Context and a channel ID as parameters.
+// Returns a pointer to TvChannel if found, or an error if the operation fails.
 func (r *RedisStore) GetChannelByID(ctx context.Context, id int64) (*TvChannel, error) {
 	id_str := strconv.FormatInt(id, 10)
 	channelKey := fmt.Sprintf("%s:%s", r.Prefix, id_str)
@@ -114,6 +119,10 @@ func (r *RedisStore) GetChannelByID(ctx context.Context, id int64) (*TvChannel, 
 	return channel, nil
 }
 
+// DeleteAll removes all entries from the Redis store. This operation clears all key-value pairs
+// stored in the Redis database associated with this store instance.
+// It requires a context for cancellation and timeout control.
+// Returns an error if the operation fails, nil otherwise.
 func (r *RedisStore) DeleteAll(ctx context.Context) error {
 	pattern := fmt.Sprintf("%s:*", r.Prefix)
 	iter := r.Client.Scan(ctx, 0, pattern, 0).Iterator()
@@ -131,6 +140,10 @@ func (r *RedisStore) DeleteAll(ctx context.Context) error {
 	return nil
 }
 
+// GetCounter retrieves the current counter value from Redis.
+// The counter is stored with a key formatted as "{prefix}:counter".
+// If the counter doesn't exist in Redis, it returns 0 without error.
+// Returns the counter value and any error encountered during the operation.
 func (r *RedisStore) GetCounter(ctx context.Context) (int64, error) {
 	counterKey := fmt.Sprintf("%s:counter", r.Prefix)
 	count, err := r.Client.Get(ctx, counterKey).Int64()
