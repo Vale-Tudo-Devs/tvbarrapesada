@@ -57,3 +57,18 @@ func (r *RedisStore) Stop(ctx context.Context) error {
 	log.Printf("Sending command: %+v", jsonData)
 	return r.Client.Publish(ctx, remoteControlChannel, jsonData).Err()
 }
+
+func (r *RedisStore) Restart(ctx context.Context) error {
+	r.Prefix = "channel"
+	command := ChannelCommand{
+		Command: "restart",
+	}
+
+	jsonData, err := json.Marshal(command)
+	if err != nil {
+		return fmt.Errorf("failed to marshal command: %w", err)
+	}
+
+	log.Printf("Sending command: %+v", jsonData)
+	return r.Client.Publish(ctx, remoteControlChannel, jsonData).Err()
+}

@@ -14,7 +14,7 @@ const streamOpts: StreamOptions = {
     maxBitrateKbps: config.maxBitrateKbps,
     hardwareAcceleratedDecoding: config.hardwareAcceleratedDecoding,
     videoCodec: Utils.normalizeVideoCodec(config.videoCodec),
-    
+
     /**
      * Enables the sending of RTCP sender reports. These reports assist the receiver in synchronizing audio and video frames.
      * In certain uncommon scenarios, disabling this feature might be beneficial.
@@ -58,13 +58,17 @@ async function handleStop() {
 
 async function handleMessage({ command, title, url }: RedisMessage) {
     console.log("Received command: " + command + " from channel: " + title);
-    
+
     if (command === "play") {
         await handlePlay(title, url);
     }
 
     if (command === "stop") {
         await handleStop();
+    }
+
+    if (command === "restart") {
+        process.exit(1);
     }
 }
 

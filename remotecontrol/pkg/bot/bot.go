@@ -210,6 +210,19 @@ func AddCommands(s *discordgo.Session) {
 		return
 	}
 	log.Printf("search command added: %v\n", c)
+
+	// Define and create restart command
+	restartCommand := &discordgo.ApplicationCommand{
+		Name:        "restart",
+		Description: "Restart the bot",
+	}
+
+	c, err = s.ApplicationCommandCreate(s.State.User.ID, "", restartCommand)
+	if err != nil {
+		log.Printf("Error creating slash command: %v\n", err)
+		return
+	}
+	log.Printf("restart command added: %v\n", c)
 }
 
 func DeleteCommands(s *discordgo.Session) {
