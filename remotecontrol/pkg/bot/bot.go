@@ -148,6 +148,27 @@ func AddCommands(s *discordgo.Session) {
 		return
 	}
 	log.Printf("stop command added: %v\n", c)
+
+	// Define and create the Search command
+	searchCommand := &discordgo.ApplicationCommand{
+		Name:        "search",
+		Description: "Search for a TV channel",
+		Options: []*discordgo.ApplicationCommandOption{
+			{
+				Type:        discordgo.ApplicationCommandOptionString,
+				Name:        "query",
+				Description: "Search for a channel, you can use multiple words",
+				Required:    true,
+			},
+		},
+	}
+
+	c, err = s.ApplicationCommandCreate(s.State.User.ID, "", searchCommand)
+	if err != nil {
+		log.Printf("Error creating slash command: %v\n", err)
+		return
+	}
+	log.Printf("search command added: %v\n", c)
 }
 
 func DeleteCommands(s *discordgo.Session) {
