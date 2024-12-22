@@ -18,6 +18,9 @@ type ChannelCommand struct {
 }
 
 func (r *RedisStore) Play(ctx context.Context, id int64) error {
+	// Stop any previous channel
+	r.Stop(ctx)
+
 	r.Prefix = "channel"
 	tvChannel, err := r.GetChannelByID(ctx, id)
 	if err != nil {
