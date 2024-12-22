@@ -92,6 +92,40 @@ func tvHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		if err != nil {
 			log.Printf("Error responding to command: %v\n", err)
 		}
+	case "search":
+		query := i.ApplicationCommandData().Options[0].StringValue()
+		log.Printf("Search command received from user: %s - query: %s", i.Member.User.Username, query)
+
+		r.Prefix = "channel"
+		channels, err := r.SearchChannelsByName(ctx, query)
+		if err != nil {
+			log.Printf("Error searching for channel: %v\n", err)
+			return
+		}
+
+		// Respond to the interaction
+		var content string
+		if len(channels) == 0 {
+			content = "No channels found"
+		} else {
+			content = "Channels found:\n"
+			for _, channel := range channels {
+				content += fmt.Sprintf("%s - %s\n", channel.ID, channel.Name)
+			}
+		}
+		err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: content,
+			},
+		})
+		if err != nil {
+			log.Printf("Error responding to command: %v\n", err)
+			return
+		}
+
+		log.Printf("Channels found: %v\n", channels)
+
 	default:
 		log.Printf("Unknown command: %s\n", i.ApplicationCommandData().Name)
 	}
@@ -107,6 +141,12 @@ func AddCommands(s *discordgo.Session) {
 
 	// Define and create the TV command
 	r.Prefix = "channel"
+	channels, err := r.SearchChannelsByName(ctx, "Globo")
+	if err != nil {
+		log.Printf("Error searching channels by name: %v\n", err)
+		return
+	}
+	log.Printf("Channels found: %v\n", channels)
 	channelsLen, err := r.GetCounter(ctx)
 	if err != nil {
 		log.Printf("Error getting channel count: %v\n", err)
