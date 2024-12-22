@@ -16,7 +16,7 @@ services:
       dockerfile: Dockerfile
     env_file:
       - streamer-secrets.env
-    # restart: unless-stopped
+    restart: unless-stopped
     depends_on:
       - redis
       - remotecontrol
