@@ -112,6 +112,7 @@ func AddCommands(s *discordgo.Session) {
 		log.Printf("Error getting channel count: %v\n", err)
 		return
 	}
+	channelsLen-- // The counter starts at 1
 
 	tvCommand := &discordgo.ApplicationCommand{
 		Name:        "tv",
