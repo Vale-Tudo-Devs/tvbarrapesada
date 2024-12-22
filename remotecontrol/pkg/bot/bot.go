@@ -175,7 +175,7 @@ func AddCommands(s *discordgo.Session) {
 		log.Printf("Error creating slash command: %v\n", err)
 		return
 	}
-	log.Printf("tv command added: %v\n", c)
+	log.Printf("tv command added: %v\n", c.Name)
 
 	// Define and create the Stop command
 	stopCommand := &discordgo.ApplicationCommand{
@@ -188,7 +188,7 @@ func AddCommands(s *discordgo.Session) {
 		log.Printf("Error creating slash command: %v\n", err)
 		return
 	}
-	log.Printf("stop command added: %v\n", c)
+	log.Printf("stop command added: %v\n", c.Name)
 
 	// Define and create the Search command
 	searchCommand := &discordgo.ApplicationCommand{
@@ -209,7 +209,7 @@ func AddCommands(s *discordgo.Session) {
 		log.Printf("Error creating slash command: %v\n", err)
 		return
 	}
-	log.Printf("search command added: %v\n", c)
+	log.Printf("search command added: %v\n", c.Name)
 
 	// Define and create restart command
 	restartCommand := &discordgo.ApplicationCommand{
@@ -222,7 +222,7 @@ func AddCommands(s *discordgo.Session) {
 		log.Printf("Error creating slash command: %v\n", err)
 		return
 	}
-	log.Printf("restart command added: %v\n", c)
+	log.Printf("restart command added: %v\n", c.Name)
 }
 
 func DeleteCommands(s *discordgo.Session) {
