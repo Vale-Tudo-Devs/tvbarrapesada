@@ -113,6 +113,10 @@ func tvHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
 				content += fmt.Sprintf("%s - %s\n", channel.ID, channel.Name)
 			}
 		}
+		// Limit content to 1980 characters
+		if len(content) > 1980 {
+			content = content[:1980] + "\n... (truncated)"
+		}
 		err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
 			Data: &discordgo.InteractionResponseData{
@@ -141,12 +145,6 @@ func AddCommands(s *discordgo.Session) {
 
 	// Define and create the TV command
 	r.Prefix = "channel"
-	channels, err := r.SearchChannelsByName(ctx, "Globo")
-	if err != nil {
-		log.Printf("Error searching channels by name: %v\n", err)
-		return
-	}
-	log.Printf("Channels found: %v\n", channels)
 	channelsLen, err := r.GetCounter(ctx)
 	if err != nil {
 		log.Printf("Error getting channel count: %v\n", err)
