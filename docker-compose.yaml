@@ -7,6 +7,7 @@ services:
     ports:
       - 6379:6379
     restart: unless-stopped
+    command: redis-server --requirepass your_password_here
   # streamer:
   #   image: streamer
   #   container_name: streamer
@@ -14,7 +15,7 @@ services:
   #     context: streamer/
   #     dockerfile: Dockerfile
   #   env_file:
-  #     - secrets.env
+  #     - streamer-secrets.env
   #   restart: unless-stopped
   #   depends_on:
   #     - redis
@@ -25,7 +26,7 @@ services:
       context: remotecontrol/
       dockerfile: Dockerfile
     env_file:
-      - secrets.env.test
+      - remotecontrol-secrets.env
     volumes:
       - remotecontrol-data:/data
     restart: unless-stopped
