@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/go-redis/redis/v8"
 )
@@ -52,12 +53,15 @@ func newRedisClient(ctx context.Context, addr, password string, db int) (*RedisS
 	return &RedisStore{Client: rdb}, nil
 }
 
+// Save stores a TvChannel object in Redis.
+// If the operation fails, it returns an error, otherwise it returns nil.
+// The context parameter can be used to control timeout and cancellation.
 func (r *RedisStore) Save(ctx context.Context, tvChannel TvChannel) error {
 	// Set a hash with channel information
 	channelKey := fmt.Sprintf("%s:%s", r.Prefix, tvChannel.ID)
 	_, err := r.Client.HSet(ctx, channelKey, map[string]interface{}{
 		"id":   tvChannel.ID,
-		"name": tvChannel.Name,
+		"name": strings.ToUpper(tvChannel.Name),
 		"url":  tvChannel.URL,
 	}).Result()
 	if err != nil {
@@ -75,7 +79,7 @@ func (r *RedisStore) Save(ctx context.Context, tvChannel TvChannel) error {
 		return err
 	}
 
-	nameKey := fmt.Sprintf("%s:name:%s", r.Prefix, tvChannel.Name)
+	nameKey := fmt.Sprintf("%s:name:%s", r.Prefix, strings.ToUpper(tvChannel.Name))
 	if err := r.Client.Set(ctx, nameKey, tvChannel.ID, 0).Err(); err != nil {
 		return err
 	}
@@ -85,11 +89,13 @@ func (r *RedisStore) Save(ctx context.Context, tvChannel TvChannel) error {
 		return err
 	}
 
-	log.Printf("Saved channel %s", tvChannel.Name)
+	log.Printf("Saved channel %s", strings.ToUpper(tvChannel.Name))
 	return nil
 }
 
-// GetChannelByID retrieves channel data by ID
+// GetChannelByID retrieves a TV channel from Redis by its ID.
+// It takes a context.Context and a channel ID as parameters.
+// Returns a pointer to TvChannel if found, or an error if the operation fails.
 func (r *RedisStore) GetChannelByID(ctx context.Context, id int64) (*TvChannel, error) {
 	id_str := strconv.FormatInt(id, 10)
 	channelKey := fmt.Sprintf("%s:%s", r.Prefix, id_str)
@@ -114,6 +120,10 @@ func (r *RedisStore) GetChannelByID(ctx context.Context, id int64) (*TvChannel, 
 	return channel, nil
 }
 
+// DeleteAll removes all entries from the Redis store. This operation clears all key-value pairs
+// stored in the Redis database associated with this store instance.
+// It requires a context for cancellation and timeout control.
+// Returns an error if the operation fails, nil otherwise.
 func (r *RedisStore) DeleteAll(ctx context.Context) error {
 	pattern := fmt.Sprintf("%s:*", r.Prefix)
 	iter := r.Client.Scan(ctx, 0, pattern, 0).Iterator()
@@ -131,6 +141,10 @@ func (r *RedisStore) DeleteAll(ctx context.Context) error {
 	return nil
 }
 
+// GetCounter retrieves the current counter value from Redis.
+// The counter is stored with a key formatted as "{prefix}:counter".
+// If the counter doesn't exist in Redis, it returns 0 without error.
+// Returns the counter value and any error encountered during the operation.
 func (r *RedisStore) GetCounter(ctx context.Context) (int64, error) {
 	counterKey := fmt.Sprintf("%s:counter", r.Prefix)
 	count, err := r.Client.Get(ctx, counterKey).Int64()
@@ -141,4 +155,44 @@ func (r *RedisStore) GetCounter(ctx context.Context) (int64, error) {
 		return 0, fmt.Errorf("failed to get counter: %w", err)
 	}
 	return count, nil
+}
+
+// SearchChannelsByName searches for TV channels whose names match the given search pattern.
+// The search is case-sensitive and uses Redis pattern matching.
+// Returns a slice of TvChannel objects and any error encountered.
+func (r *RedisStore) SearchChannelsByName(ctx context.Context, searchTerm string) ([]TvChannel, error) {
+	// Split the search term by spaces and join with *
+	searchTerm = strings.Join(strings.Fields(searchTerm), "*")
+	searchTermUpper := strings.ToUpper(searchTerm)
+	pattern := fmt.Sprintf("%s:name:*%s*", r.Prefix, searchTermUpper)
+	var channels []TvChannel
+
+	iter := r.Client.Scan(ctx, 0, pattern, 0).Iterator()
+	for iter.Next(ctx) {
+		nameKey := iter.Val()
+		channelID, err := r.Client.Get(ctx, nameKey).Result()
+		if err != nil {
+			continue
+		}
+
+		channelKey := fmt.Sprintf("%s:%s", r.Prefix, channelID)
+		data, err := r.Client.HGetAll(ctx, channelKey).Result()
+		if err != nil {
+			continue
+		}
+
+		if len(data) > 0 {
+			channels = append(channels, TvChannel{
+				ID:   data["id"],
+				Name: data["name"],
+				URL:  data["url"],
+			})
+		}
+	}
+
+	if err := iter.Err(); err != nil {
+		return nil, fmt.Errorf("scan failed: %w", err)
+	}
+
+	return channels, nil
 }

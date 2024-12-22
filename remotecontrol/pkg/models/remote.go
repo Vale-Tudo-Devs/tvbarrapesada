@@ -19,9 +19,9 @@ type ChannelCommand struct {
 }
 
 func (r *RedisStore) Play(ctx context.Context, id int64) error {
-	// Stop any previous channel
+	// Stop any previous channel and wait one second
 	r.Stop(ctx)
-	time.Sleep(3 * time.Second)
+	time.Sleep(2 * time.Second)
 
 	r.Prefix = "channel"
 	tvChannel, err := r.GetChannelByID(ctx, id)

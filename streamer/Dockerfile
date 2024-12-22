@@ -4,11 +4,13 @@ WORKDIR /app
 
 RUN npm install pnpm -g
 
-COPY package.json package-lock.json ./
+COPY package.json ./
+
+COPY package-lock.json ./
 
 RUN pnpm install
 
-COPY . .
+COPY src/ ./src/
 
 COPY tsconfig.json ./
 

@@ -92,6 +92,47 @@ func tvHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		if err != nil {
 			log.Printf("Error responding to command: %v\n", err)
 		}
+	case "search":
+		query := i.ApplicationCommandData().Options[0].StringValue()
+		log.Printf("Search command received from user: %s - query: %s", i.Member.User.Username, query)
+
+		r.Prefix = "channel"
+		channels, err := r.SearchChannelsByName(ctx, query)
+		if err != nil {
+			log.Printf("Error searching for channel: %v\n", err)
+			return
+		}
+
+		// Respond to the interaction
+		var content string
+		if len(channels) == 0 {
+			content = "No channels found"
+		} else {
+			content = "Channels found:\n"
+			for _, channel := range channels {
+				content += fmt.Sprintf("%s - %s\n", channel.ID, channel.Name)
+			}
+		}
+		// Limit content to 1980 characters
+		truncatedMessage := "\n\nSearch truncated, be more specific"
+		maxLen := 2000 - len(truncatedMessage)
+		if len(content) > maxLen {
+
+			content = fmt.Sprintf("%s%s", content[:maxLen], truncatedMessage)
+		}
+		err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: content,
+			},
+		})
+		if err != nil {
+			log.Printf("Error responding to command: %v\n", err)
+			return
+		}
+
+		log.Printf("Channels found: %v\n", channels)
+
 	default:
 		log.Printf("Unknown command: %s\n", i.ApplicationCommandData().Name)
 	}
@@ -112,6 +153,7 @@ func AddCommands(s *discordgo.Session) {
 		log.Printf("Error getting channel count: %v\n", err)
 		return
 	}
+	channelsLen-- // The counter starts at 0
 
 	tvCommand := &discordgo.ApplicationCommand{
 		Name:        "tv",
@@ -147,6 +189,27 @@ func AddCommands(s *discordgo.Session) {
 		return
 	}
 	log.Printf("stop command added: %v\n", c)
+
+	// Define and create the Search command
+	searchCommand := &discordgo.ApplicationCommand{
+		Name:        "search",
+		Description: "Search for a TV channel",
+		Options: []*discordgo.ApplicationCommandOption{
+			{
+				Type:        discordgo.ApplicationCommandOptionString,
+				Name:        "query",
+				Description: "Search for a channel, you can use multiple words",
+				Required:    true,
+			},
+		},
+	}
+
+	c, err = s.ApplicationCommandCreate(s.State.User.ID, "", searchCommand)
+	if err != nil {
+		log.Printf("Error creating slash command: %v\n", err)
+		return
+	}
+	log.Printf("search command added: %v\n", c)
 }
 
 func DeleteCommands(s *discordgo.Session) {
