@@ -1,32 +1,28 @@
 # Build stage
-FROM node:18 AS builder
+FROM node:22.11-bookworm-slim
 
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+# Install pnpm globally
+RUN npm install pnpm -g
 
-# Install dependencies including TypeScript
-RUN npm ci && npm cache clean --force
+# Copy package files first
+COPY package.json package-lock.json ./
 
-# Copy source code
+# Install dependencies
+RUN pnpm install
+
+# Copy rest of the files
+COPY . /
+
+# Copy TypeScript config
 COPY tsconfig.json ./
-COPY ./src ./src
 
 # Build TypeScript
-RUN npm run build
+RUN pnpm run build
 
-# Production stage
-FROM node:18
-
+# Install ffmpeg
 RUN apt update && apt install -y ffmpeg
-WORKDIR /app
 
-COPY package*.json ./
-RUN npm ci --only=production
-
-# Copy built files from builder
-COPY --from=builder /app/dist ./dist
-
-EXPOSE 3000
-CMD [ "node", "dist/index.ts" ]
+# Start application
+CMD ["pnpm", "run", "start"]
