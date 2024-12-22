@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/go-redis/redis/v8"
 )
@@ -154,4 +155,43 @@ func (r *RedisStore) GetCounter(ctx context.Context) (int64, error) {
 		return 0, fmt.Errorf("failed to get counter: %w", err)
 	}
 	return count, nil
+}
+
+// SearchChannelsByName searches for TV channels whose names match the given search pattern.
+// The search is case-sensitive and uses Redis pattern matching.
+// Returns a slice of TvChannel objects and any error encountered.
+func (r *RedisStore) SearchChannelsByName(ctx context.Context, searchTerm string) ([]TvChannel, error) {
+	// Split the search term by spaces and join with *
+	searchTerm = strings.Join(strings.Fields(searchTerm), "*")
+	pattern := fmt.Sprintf("%s:name:*%s*", r.Prefix, searchTerm)
+	var channels []TvChannel
+
+	iter := r.Client.Scan(ctx, 0, pattern, 0).Iterator()
+	for iter.Next(ctx) {
+		nameKey := iter.Val()
+		channelID, err := r.Client.Get(ctx, nameKey).Result()
+		if err != nil {
+			continue
+		}
+
+		channelKey := fmt.Sprintf("%s:%s", r.Prefix, channelID)
+		data, err := r.Client.HGetAll(ctx, channelKey).Result()
+		if err != nil {
+			continue
+		}
+
+		if len(data) > 0 {
+			channels = append(channels, TvChannel{
+				ID:   data["id"],
+				Name: data["name"],
+				URL:  data["url"],
+			})
+		}
+	}
+
+	if err := iter.Err(); err != nil {
+		return nil, fmt.Errorf("scan failed: %w", err)
+	}
+
+	return channels, nil
 }
