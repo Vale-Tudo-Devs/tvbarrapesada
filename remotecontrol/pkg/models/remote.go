@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"time"
 )
 
 const (
@@ -19,8 +20,8 @@ type ChannelCommand struct {
 
 func (r *RedisStore) Play(ctx context.Context, id int64) error {
 	// Stop any previous channel and wait one second
-	// r.Stop(ctx)
-	// time.Sleep(2 * time.Second)
+	r.Stop(ctx)
+	time.Sleep(2 * time.Second)
 	r.Prefix = "channel"
 	tvChannel, err := r.GetChannelByID(ctx, id)
 	if err != nil {
