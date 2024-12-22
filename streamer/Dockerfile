@@ -1,36 +1,32 @@
 # Build stage
-FROM node:18-alpine AS builder
+FROM node:18 AS builder
 
 WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm install
+# Install dependencies including TypeScript
+RUN npm ci && npm cache clean --force
 
 # Copy source code
-COPY . .
+COPY tsconfig.json ./
+COPY ./src ./src
 
-# Build application
+# Build TypeScript
 RUN npm run build
 
 # Production stage
-FROM node:18-alpine
+FROM node:18
 
+RUN apt update && apt install -y ffmpeg
 WORKDIR /app
 
-# Copy package files
 COPY package*.json ./
-
-# Install production dependencies only
 RUN npm ci --only=production
 
-# Copy built assets from builder
+# Copy built files from builder
 COPY --from=builder /app/dist ./dist
 
-# Set environment to production
-ENV NODE_ENV=production
-
-# Start command
-CMD ["npm", "run", "start"]
+EXPOSE 3000
+CMD [ "node", "dist/index.ts" ]
