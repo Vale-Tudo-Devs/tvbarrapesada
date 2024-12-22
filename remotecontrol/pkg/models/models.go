@@ -61,7 +61,7 @@ func (r *RedisStore) Save(ctx context.Context, tvChannel TvChannel) error {
 	channelKey := fmt.Sprintf("%s:%s", r.Prefix, tvChannel.ID)
 	_, err := r.Client.HSet(ctx, channelKey, map[string]interface{}{
 		"id":   tvChannel.ID,
-		"name": tvChannel.Name,
+		"name": strings.ToUpper(tvChannel.Name),
 		"url":  tvChannel.URL,
 	}).Result()
 	if err != nil {
@@ -79,7 +79,7 @@ func (r *RedisStore) Save(ctx context.Context, tvChannel TvChannel) error {
 		return err
 	}
 
-	nameKey := fmt.Sprintf("%s:name:%s", r.Prefix, tvChannel.Name)
+	nameKey := fmt.Sprintf("%s:name:%s", r.Prefix, strings.ToUpper(tvChannel.Name))
 	if err := r.Client.Set(ctx, nameKey, tvChannel.ID, 0).Err(); err != nil {
 		return err
 	}
@@ -89,7 +89,7 @@ func (r *RedisStore) Save(ctx context.Context, tvChannel TvChannel) error {
 		return err
 	}
 
-	log.Printf("Saved channel %s", tvChannel.Name)
+	log.Printf("Saved channel %s", strings.ToUpper(tvChannel.Name))
 	return nil
 }
 
@@ -163,7 +163,8 @@ func (r *RedisStore) GetCounter(ctx context.Context) (int64, error) {
 func (r *RedisStore) SearchChannelsByName(ctx context.Context, searchTerm string) ([]TvChannel, error) {
 	// Split the search term by spaces and join with *
 	searchTerm = strings.Join(strings.Fields(searchTerm), "*")
-	pattern := fmt.Sprintf("%s:name:*%s*", r.Prefix, searchTerm)
+	searchTermUpper := strings.ToUpper(searchTerm)
+	pattern := fmt.Sprintf("%s:name:*%s*", r.Prefix, searchTermUpper)
 	var channels []TvChannel
 
 	iter := r.Client.Scan(ctx, 0, pattern, 0).Iterator()

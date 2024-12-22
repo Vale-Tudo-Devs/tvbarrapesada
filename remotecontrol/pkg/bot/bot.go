@@ -114,8 +114,11 @@ func tvHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
 			}
 		}
 		// Limit content to 1980 characters
-		if len(content) > 1980 {
-			content = content[:1980] + "\n... (truncated)"
+		truncatedMessage := "\n\nSearch truncated, be more specific"
+		maxLen := 2000 - len(truncatedMessage)
+		if len(content) > maxLen {
+
+			content = fmt.Sprintf("%s%s", content[:maxLen], truncatedMessage)
 		}
 		err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
