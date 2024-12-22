@@ -105,11 +105,6 @@ func AddCommands(s *discordgo.Session) {
 		return
 	}
 
-	// Delete all commands if updating the database
-	if os.Getenv("SKIP_CHANNEL_DB_UPDATE") == "" {
-		DeleteCommands(s)
-	}
-
 	// Define and create the TV command
 	r.Prefix = "channel"
 	channelsLen, err := r.GetCounter(ctx)
@@ -152,7 +147,6 @@ func AddCommands(s *discordgo.Session) {
 		return
 	}
 	log.Printf("stop command added: %v\n", c)
-
 }
 
 func DeleteCommands(s *discordgo.Session) {
