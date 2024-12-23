@@ -46,7 +46,7 @@ async function handlePlay(title: string, url: string) {
     const streamUdpConn = await discordService.joinVoiceChannel(streamOpts);
     const videoUrl = await YoutubeHelper.getVideoInternalUrl(url) ?? url;
     await discordService.startStreaming(videoUrl, streamUdpConn);
-    await discordService.setWatchingStatus(title);
+    discordService.setWatchingStatus(title);
     console.log(videoUrl);
 }
 
