@@ -51,7 +51,6 @@ func main() {
 			select {
 			case <-ticker.C:
 				isWatching := bot.IsAnyoneWatching(ctx, b.DiscordSession)
-				log.Printf("Checking if anyone is watching: %v\n", isWatching)
 				if !isWatching {
 					log.Println("No one is watching, stopping bot.")
 					r.Stop(ctx)
