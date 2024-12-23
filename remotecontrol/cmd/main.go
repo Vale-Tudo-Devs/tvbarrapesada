@@ -6,8 +6,10 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/vale-tudo-devs/tvbarrapesada/remotecontrol/pkg/bot"
+	"github.com/vale-tudo-devs/tvbarrapesada/remotecontrol/pkg/models"
 	"github.com/vale-tudo-devs/tvbarrapesada/remotecontrol/pkg/playlist"
 )
 
@@ -34,6 +36,30 @@ func main() {
 	// Make channel to keep bot running and handle graceful shutdown
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
+
+	// Start a goroutine to check viewer status every minute
+	go func() {
+		ticker := time.NewTicker(5 * time.Second)
+		defer ticker.Stop()
+
+		r, err := models.NewAuthenticatedRedisClient(ctx)
+		if err != nil {
+			log.Panicf("Error creating redis client: %v\n", err)
+		}
+
+		for {
+			select {
+			case <-ticker.C:
+				isWatching := bot.IsAnyoneWatching(ctx, b.DiscordSession)
+				if !isWatching {
+					log.Println("No one is watching, stopping bot.")
+					r.Stop(ctx)
+				}
+			case <-stop:
+				return
+			}
+		}
+	}()
 
 	// Wait for signal to terminate
 	<-stop

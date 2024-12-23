@@ -280,3 +280,34 @@ func DeleteCommands(s *discordgo.Session) {
 		log.Printf("Command deleted: %s\n", command.Name)
 	}
 }
+
+func IsAnyoneWatching(ctx context.Context, s *discordgo.Session) bool {
+	guilds, err := s.UserGuilds(200, "", "", true)
+	if err != nil {
+		return true
+	}
+	for _, guild := range guilds {
+		// Register oncall users
+		guildID := guild.ID
+		members, err := s.GuildMembers(guildID, "", 1000)
+		if err != nil {
+			log.Printf("error fetching members for guild %s: %v", guildID, err)
+			continue
+		}
+		oncallUsersCount := 0
+		for _, member := range members {
+			if member.User.Bot {
+				continue
+			}
+			vs, _ := s.State.VoiceState(guildID, member.User.ID) // it errors out if the user is not in a voice channel, ignore it
+			if vs != nil && vs.ChannelID != "" {
+				oncallUsersCount++
+			}
+		}
+		// If anyone other than the bot is watching, return true
+		if oncallUsersCount > 1 {
+			return true
+		}
+	}
+	return false
+}
