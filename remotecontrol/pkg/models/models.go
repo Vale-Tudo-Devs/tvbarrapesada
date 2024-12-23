@@ -196,3 +196,28 @@ func (r *RedisStore) SearchChannelsByName(ctx context.Context, searchTerm string
 
 	return channels, nil
 }
+
+func (r *RedisStore) RegisterCurrentChannel(ctx context.Context, tvChannel *TvChannel) error {
+	id := tvChannel.ID
+	key := fmt.Sprintf("%s:current", r.Prefix)
+	return r.Client.Set(ctx, key, id, 0).Err()
+}
+
+func (r *RedisStore) GetCurrentChannel(ctx context.Context) (*TvChannel, error) {
+	key := fmt.Sprintf("%s:current", r.Prefix)
+	idStr, err := r.Client.Get(ctx, key).Result()
+	if err != nil {
+		return nil, err
+	}
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	channel, err := r.GetChannelByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return channel, nil
+}

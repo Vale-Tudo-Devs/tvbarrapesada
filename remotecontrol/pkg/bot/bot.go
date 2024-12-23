@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
+	"time"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/vale-tudo-devs/tvbarrapesada/remotecontrol/pkg/models"
@@ -49,13 +51,13 @@ func tvHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		log.Printf("Error creating redis client: %v\n", err)
 		return
 	}
+	r.Prefix = "channel"
 
 	switch i.ApplicationCommandData().Name {
 	case "tv":
 		channelId := i.ApplicationCommandData().Options[0].IntValue()
 		log.Printf("TV command received from user: %s - channelId: %d", i.Member.User.Username, channelId)
 
-		r.Prefix = "channel"
 		channelName, err := r.GetChannelByID(ctx, channelId)
 		if err != nil {
 			log.Printf("Error getting channel by ID: %v\n", err)
@@ -66,6 +68,12 @@ func tvHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		if err != nil {
 			log.Printf("Error sending command to redis: %v\n", err)
 		}
+
+		err = r.RegisterCurrentChannel(ctx, channelName)
+		if err != nil {
+			log.Printf("Error registering current channel: %v\n", err)
+		}
+
 		// Respond to the interaction
 		err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
 			Type: discordgo.InteractionResponseChannelMessageWithSource,
@@ -96,7 +104,6 @@ func tvHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		query := i.ApplicationCommandData().Options[0].StringValue()
 		log.Printf("Search command received from user: %s - query: %s", i.Member.User.Username, query)
 
-		r.Prefix = "channel"
 		channels, err := r.SearchChannelsByName(ctx, query)
 		if err != nil {
 			log.Printf("Error searching for channel: %v\n", err)
@@ -132,6 +139,39 @@ func tvHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		}
 
 		log.Printf("Channels found: %v\n", channels)
+	case "restart":
+		log.Printf("Restart command received from user: %s", i.Member.User.Username)
+		err := r.Restart(ctx)
+		if err != nil {
+			log.Printf("Error sending command to redis: %v\n", err)
+		}
+
+		time.Sleep(2 * time.Second)
+		currentChannel, err := r.GetCurrentChannel(ctx)
+		if err != nil {
+			log.Printf("Error getting current channel: %v\n", err)
+		}
+
+		channelID, err := strconv.ParseInt(currentChannel.ID, 10, 64)
+		if err != nil {
+			log.Printf("Error parsing channel ID: %v\n", err)
+			return
+		}
+		err = r.Play(ctx, channelID)
+		if err != nil {
+			log.Printf("Error sending command to redis: %v\n", err)
+		}
+
+		// Respond to the interaction
+		err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: "Bot restarted",
+			},
+		})
+		if err != nil {
+			log.Printf("Error responding to command: %v\n", err)
+		}
 
 	default:
 		log.Printf("Unknown command: %s\n", i.ApplicationCommandData().Name)
@@ -175,7 +215,7 @@ func AddCommands(s *discordgo.Session) {
 		log.Printf("Error creating slash command: %v\n", err)
 		return
 	}
-	log.Printf("tv command added: %v\n", c)
+	log.Printf("tv command added: %v\n", c.Name)
 
 	// Define and create the Stop command
 	stopCommand := &discordgo.ApplicationCommand{
@@ -188,7 +228,7 @@ func AddCommands(s *discordgo.Session) {
 		log.Printf("Error creating slash command: %v\n", err)
 		return
 	}
-	log.Printf("stop command added: %v\n", c)
+	log.Printf("stop command added: %v\n", c.Name)
 
 	// Define and create the Search command
 	searchCommand := &discordgo.ApplicationCommand{
@@ -209,7 +249,20 @@ func AddCommands(s *discordgo.Session) {
 		log.Printf("Error creating slash command: %v\n", err)
 		return
 	}
-	log.Printf("search command added: %v\n", c)
+	log.Printf("search command added: %v\n", c.Name)
+
+	// Define and create restart command
+	restartCommand := &discordgo.ApplicationCommand{
+		Name:        "restart",
+		Description: "Restart the bot",
+	}
+
+	c, err = s.ApplicationCommandCreate(s.State.User.ID, "", restartCommand)
+	if err != nil {
+		log.Printf("Error creating slash command: %v\n", err)
+		return
+	}
+	log.Printf("restart command added: %v\n", c.Name)
 }
 
 func DeleteCommands(s *discordgo.Session) {
