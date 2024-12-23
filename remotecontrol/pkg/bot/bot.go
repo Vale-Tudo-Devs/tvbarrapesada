@@ -306,6 +306,7 @@ func IsAnyoneWatching(ctx context.Context, s *discordgo.Session) bool {
 		}
 		// If anyone other than the bot is watching, return true
 		if oncallUsersCount > 1 {
+			log.Printf("There are %d users watching in guild %s", oncallUsersCount, guildID)
 			return true
 		}
 	}
