@@ -89,7 +89,7 @@ func (r *RedisStore) RandomChannel(ctx context.Context) (*TvChannel, error) {
 	return channel, r.Play(ctx, randChannel)
 }
 
-func (r *RedisStore) PlayYoutube(ctx context.Context, url string) error {
+func (r *RedisStore) PlayYoutube(ctx context.Context, url string) (tittle string, err error) {
 	r.Prefix = "channel"
 	videoTitle, err := getYoutubeTitle(url)
 	if err != nil {
@@ -104,11 +104,11 @@ func (r *RedisStore) PlayYoutube(ctx context.Context, url string) error {
 
 	jsonData, err := json.Marshal(command)
 	if err != nil {
-		return fmt.Errorf("failed to marshal command: %w", err)
+		return "", fmt.Errorf("failed to marshal command: %w", err)
 	}
 
 	log.Printf("Sending command: %+v", jsonData)
-	return r.Client.Publish(ctx, remoteControlChannel, jsonData).Err()
+	return videoTitle, r.Client.Publish(ctx, remoteControlChannel, jsonData).Err()
 }
 
 func getYoutubeTitle(url string) (string, error) {

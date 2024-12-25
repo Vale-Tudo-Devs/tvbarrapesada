@@ -193,6 +193,22 @@ func tvHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		}
 	case "yt":
 		log.Printf("YT command received from user: %s", i.Member.User.Username)
+		url := i.ApplicationCommandData().Options[0].StringValue()
+		tittle, err := r.PlayYoutube(ctx, url)
+		if err != nil {
+			log.Printf("Error sending command to redis: %v\n", err)
+		}
+
+		// Respond to the interaction
+		err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: fmt.Sprintf("Playing Youtube video: %s", tittle),
+			},
+		})
+		if err != nil {
+			log.Printf("Error responding to command: %v\n", err)
+		}
 
 	default:
 		log.Printf("Unknown command: %s\n", i.ApplicationCommandData().Name)
