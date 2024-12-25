@@ -90,6 +90,9 @@ func (r *RedisStore) RandomChannel(ctx context.Context) (*TvChannel, error) {
 }
 
 func (r *RedisStore) PlayYoutube(ctx context.Context, url string) (tittle string, err error) {
+	r.Stop(ctx)
+	time.Sleep(2 * time.Second)
+
 	r.Prefix = "channel"
 	videoTitle, err := getYoutubeTitle(url)
 	if err != nil {
