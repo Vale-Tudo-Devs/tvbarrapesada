@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
@@ -172,7 +174,23 @@ func tvHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		if err != nil {
 			log.Printf("Error responding to command: %v\n", err)
 		}
+	case "random":
+		log.Printf("Random command received from user: %s", i.Member.User.Username)
+		channel, err := r.RandomChannel(ctx)
+		if err != nil {
+			log.Printf("Error sending command to redis: %v\n", err)
+		}
 
+		// Respond to the interaction
+		err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: fmt.Sprintf("Random channel set to %s - %s", channel.ID, channel.Name),
+			},
+		})
+		if err != nil {
+			log.Printf("Error responding to command: %v\n", err)
+		}
 	default:
 		log.Printf("Unknown command: %s\n", i.ApplicationCommandData().Name)
 	}
@@ -188,7 +206,7 @@ func AddCommands(s *discordgo.Session) {
 
 	// Define and create the TV command
 	r.Prefix = "channel"
-	channelsLen, err := r.GetCounter(ctx)
+	channelsLen, err := r.GetChannelCounter(ctx)
 	if err != nil {
 		log.Printf("Error getting channel count: %v\n", err)
 		return
@@ -263,6 +281,18 @@ func AddCommands(s *discordgo.Session) {
 		return
 	}
 	log.Printf("restart command added: %v\n", c.Name)
+
+	randomCommand := &discordgo.ApplicationCommand{
+		Name:        "random",
+		Description: "Get a random TV channel",
+	}
+
+	c, err = s.ApplicationCommandCreate(s.State.User.ID, "", randomCommand)
+	if err != nil {
+		log.Printf("Error creating slash command: %v\n", err)
+		return
+	}
+	log.Printf("random command added: %v\n", c.Name)
 }
 
 func DeleteCommands(s *discordgo.Session) {
@@ -301,6 +331,18 @@ func IsAnyoneWatching(ctx context.Context, s *discordgo.Session) bool {
 			}
 			vs, _ := s.State.VoiceState(guildID, member.User.ID) // it errors out if the user is not in a voice channel, ignore it
 			if vs != nil && vs.ChannelID != "" {
+				// Check if user is on an ignored channel
+				currentVoiceChannel, err := s.Channel(vs.ChannelID)
+				if err != nil {
+					log.Printf("error fetching channel for user %s: %v", member.User.ID, err)
+					continue
+				}
+				ignoredChannels := strings.Split(os.Getenv("DISCORD_IGNORED_CHANNELS"), ",")
+				if slices.Contains(ignoredChannels, currentVoiceChannel.Name) {
+					log.Printf("Ignoring user %s in ignored channel %s", member.User.ID, currentVoiceChannel.Name)
+					continue
+				}
+
 				oncallUsersCount++
 			}
 		}

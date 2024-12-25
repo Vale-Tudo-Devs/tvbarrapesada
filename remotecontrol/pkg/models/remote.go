@@ -72,3 +72,17 @@ func (r *RedisStore) Restart(ctx context.Context) error {
 	log.Printf("Sending command: %+v", jsonData)
 	return r.Client.Publish(ctx, remoteControlChannel, jsonData).Err()
 }
+
+func (r *RedisStore) RandomChannel(ctx context.Context) (*TvChannel, error) {
+	randChannel, err := r.GetRandomChannel(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get random channel: %w", err)
+	}
+
+	channel, err := r.GetChannelByID(ctx, randChannel)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get channel by id: %w", err)
+	}
+
+	return channel, r.Play(ctx, randChannel)
+}

@@ -39,7 +39,7 @@ func main() {
 
 	// Start a goroutine to check viewer status every minute
 	go func() {
-		ticker := time.NewTicker(60 * time.Second)
+		ticker := time.NewTicker(120 * time.Second)
 		defer ticker.Stop()
 
 		r, err := models.NewAuthenticatedRedisClient(ctx)

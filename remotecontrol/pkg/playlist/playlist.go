@@ -122,7 +122,7 @@ func downloadPlaylist(url, filePath string) (string, error) {
 	}
 
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		log.Printf("Cache file not found, downloading from %s", url)
+		log.Printf("Cache file not found, downloading from PLAYLIST_URL environment variable")
 
 		resp, err := http.Get(url)
 		if err != nil {
