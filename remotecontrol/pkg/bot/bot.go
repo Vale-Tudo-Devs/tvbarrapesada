@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
@@ -301,6 +303,18 @@ func IsAnyoneWatching(ctx context.Context, s *discordgo.Session) bool {
 			}
 			vs, _ := s.State.VoiceState(guildID, member.User.ID) // it errors out if the user is not in a voice channel, ignore it
 			if vs != nil && vs.ChannelID != "" {
+				// Check if user is on an ignored channel
+				currentVoiceChannel, err := s.Channel(vs.ChannelID)
+				if err != nil {
+					log.Printf("error fetching channel for user %s: %v", member.User.ID, err)
+					continue
+				}
+				ignoredChannels := strings.Split(os.Getenv("DISCORD_IGNORED_CHANNELS"), ",")
+				if slices.Contains(ignoredChannels, currentVoiceChannel.Name) {
+					log.Printf("Ignoring user %s in ignored channel %s", member.User.ID, currentVoiceChannel.Name)
+					continue
+				}
+
 				oncallUsersCount++
 			}
 		}
