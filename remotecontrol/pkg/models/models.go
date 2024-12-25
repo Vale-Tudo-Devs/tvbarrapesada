@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
 	"strconv"
 	"strings"
@@ -141,11 +142,11 @@ func (r *RedisStore) DeleteAll(ctx context.Context) error {
 	return nil
 }
 
-// GetCounter retrieves the current counter value from Redis.
+// GetChannelCounter retrieves the current counter value from Redis.
 // The counter is stored with a key formatted as "{prefix}:counter".
 // If the counter doesn't exist in Redis, it returns 0 without error.
 // Returns the counter value and any error encountered during the operation.
-func (r *RedisStore) GetCounter(ctx context.Context) (int64, error) {
+func (r *RedisStore) GetChannelCounter(ctx context.Context) (int64, error) {
 	counterKey := fmt.Sprintf("%s:counter", r.Prefix)
 	count, err := r.Client.Get(ctx, counterKey).Int64()
 	if err != nil {
@@ -195,6 +196,25 @@ func (r *RedisStore) SearchChannelsByName(ctx context.Context, searchTerm string
 	}
 
 	return channels, nil
+}
+
+// GetRandomChannel retrieves a random channel ID from the Redis store.
+// It first gets the total channel count using GetChannelCounter and then
+// generates a random number between 0 and count-1.
+//
+// The context parameter is used for cancellation and timeout control.
+//
+// Returns:
+//   - int64: A random channel ID between 0 and (channel count - 1)
+//   - error: An error if the channel counter could not be retrieved
+func (r *RedisStore) GetRandomChannel(ctx context.Context) (int64, error) {
+	count, err := r.GetChannelCounter(ctx)
+	if err != nil {
+		return 0, err
+	}
+	id := rand.Int63n(count)
+
+	return id, nil
 }
 
 func (r *RedisStore) RegisterCurrentChannel(ctx context.Context, tvChannel *TvChannel) error {
