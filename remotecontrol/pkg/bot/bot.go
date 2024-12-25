@@ -191,6 +191,9 @@ func tvHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		if err != nil {
 			log.Printf("Error responding to command: %v\n", err)
 		}
+	case "yt":
+		log.Printf("YT command received from user: %s", i.Member.User.Username)
+
 	default:
 		log.Printf("Unknown command: %s\n", i.ApplicationCommandData().Name)
 	}
@@ -293,6 +296,18 @@ func AddCommands(s *discordgo.Session) {
 		return
 	}
 	log.Printf("random command added: %v\n", c.Name)
+
+	youtubeCommand := &discordgo.ApplicationCommand{
+		Name:        "yt",
+		Description: "Set the TV channel to a youtube video",
+	}
+
+	c, err = s.ApplicationCommandCreate(s.State.User.ID, "", youtubeCommand)
+	if err != nil {
+		log.Printf("Error creating slash command: %v\n", err)
+		return
+	}
+	log.Printf("yt command added: %v\n", c.Name)
 }
 
 func DeleteCommands(s *discordgo.Session) {

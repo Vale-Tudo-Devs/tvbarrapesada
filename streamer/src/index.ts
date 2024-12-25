@@ -68,7 +68,7 @@ async function handleMessage({ command, title, url }: RedisMessage) {
     }
 
     if (command === "restart") {
-        process.exit(1);
+        process.exit(0);
     }
 }
 
