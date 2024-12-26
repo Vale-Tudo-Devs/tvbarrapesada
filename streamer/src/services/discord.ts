@@ -4,7 +4,7 @@ import config from "../config.js";
 
 export class DiscordService {
     private streamer: Streamer;
-    
+
     constructor() {
         this.streamer = new Streamer(new Client());
         this.setupClient();
@@ -25,14 +25,13 @@ export class DiscordService {
     }
 
     public setIdleStatus() {
-        const status = this.createCustomStatus('📽', 'Watching Something!');
+        const status = this.createCustomStatus('👌', 'Ready to broadcast');
         this.streamer.client.user?.setActivity(status as unknown as ActivityOptions);
     }
 
     public setWatchingStatus(name: string) {
-        const status = this.createCustomStatus('📽', `Playing ${name}...`);
-        this.streamer.client.user?.setActivity(status as unknown as ActivityOptions);
-    }
+        const status = this.createCustomStatus('📺', `Streaming ${name}`);
+        this.streamer.client.user?.setActivity(status as unknown as ActivityOptions);    }
 
     public async joinVoiceChannel(streamOpts: StreamOptions) {
         await this.streamer.joinVoice(config.guildId, config.videoChannelId!, streamOpts);

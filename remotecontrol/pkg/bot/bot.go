@@ -87,7 +87,7 @@ func tvHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		if err != nil {
 			log.Printf("Error responding to command: %v\n", err)
 		}
-	case "youtube":
+	case "yt":
 		log.Printf("YT command received from user: %s", i.Member.User.Username)
 		url := i.ApplicationCommandData().Options[0].StringValue()
 		tittle, err := r.PlayYoutube(ctx, url)
@@ -321,7 +321,7 @@ func AddCommands(s *discordgo.Session) {
 
 	randomCommand := &discordgo.ApplicationCommand{
 		Name:        "random",
-		Description: "Get a random TV channel",
+		Description: "Set a random TV channel",
 	}
 
 	c, err = s.ApplicationCommandCreate(s.State.User.ID, "", randomCommand)
