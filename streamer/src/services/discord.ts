@@ -30,7 +30,7 @@ export class DiscordService {
     }
 
     public setWatchingStatus(name: string) {
-        const status = this.createCustomStatus('📺', `Streaming ${name}`);
+        const status = this.createCustomStatus('📺', `${name}`);
         this.streamer.client.user?.setActivity(status as unknown as ActivityOptions);    }
 
     public async joinVoiceChannel(streamOpts: StreamOptions) {

@@ -159,12 +159,28 @@ func tvHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		}
 
 	case "restart":
+		// Respond to the interaction
+		err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: "Restarting TV",
+			},
+		})
+		if err != nil {
+			log.Printf("Error responding to command: %v\n", err)
+		}
+
 		log.Printf("Restart command received from user: %s", i.Member.User.Username)
-		err := r.Restart(ctx)
+		err := r.Stop(ctx)
 		if err != nil {
 			log.Printf("Error sending command to redis: %v\n", err)
 		}
 
+		time.Sleep(1 * time.Second)
+		err = r.Restart(ctx)
+		if err != nil {
+			log.Printf("Error sending command to redis: %v\n", err)
+		}
 		time.Sleep(2 * time.Second)
 		currentChannel, err := r.GetCurrentChannel(ctx)
 		if err != nil {
@@ -179,17 +195,6 @@ func tvHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		err = r.Play(ctx, channelID)
 		if err != nil {
 			log.Printf("Error sending command to redis: %v\n", err)
-		}
-
-		// Respond to the interaction
-		err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseChannelMessageWithSource,
-			Data: &discordgo.InteractionResponseData{
-				Content: "Bot restarted",
-			},
-		})
-		if err != nil {
-			log.Printf("Error responding to command: %v\n", err)
 		}
 	case "random":
 		log.Printf("Random command received from user: %s", i.Member.User.Username)
