@@ -87,6 +87,24 @@ func tvHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		if err != nil {
 			log.Printf("Error responding to command: %v\n", err)
 		}
+	case "yt":
+		log.Printf("YT command received from user: %s", i.Member.User.Username)
+		url := i.ApplicationCommandData().Options[0].StringValue()
+		tittle, err := r.PlayYoutube(ctx, url)
+		if err != nil {
+			log.Printf("Error sending command to redis: %v\n", err)
+		}
+
+		// Respond to the interaction
+		err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: fmt.Sprintf("Playing Youtube video: %s", tittle),
+			},
+		})
+		if err != nil {
+			log.Printf("Error responding to command: %v\n", err)
+		}
 	case "stop":
 		log.Printf("Stop command received from user: %s", i.Member.User.Username)
 
@@ -140,14 +158,29 @@ func tvHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
 			return
 		}
 
-		log.Printf("Channels found: %v\n", channels)
 	case "restart":
+		// Respond to the interaction
+		err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: "Restarting TV",
+			},
+		})
+		if err != nil {
+			log.Printf("Error responding to command: %v\n", err)
+		}
+
 		log.Printf("Restart command received from user: %s", i.Member.User.Username)
-		err := r.Restart(ctx)
+		err := r.Stop(ctx)
 		if err != nil {
 			log.Printf("Error sending command to redis: %v\n", err)
 		}
 
+		time.Sleep(1 * time.Second)
+		err = r.Restart(ctx)
+		if err != nil {
+			log.Printf("Error sending command to redis: %v\n", err)
+		}
 		time.Sleep(2 * time.Second)
 		currentChannel, err := r.GetCurrentChannel(ctx)
 		if err != nil {
@@ -162,17 +195,6 @@ func tvHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		err = r.Play(ctx, channelID)
 		if err != nil {
 			log.Printf("Error sending command to redis: %v\n", err)
-		}
-
-		// Respond to the interaction
-		err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-			Type: discordgo.InteractionResponseChannelMessageWithSource,
-			Data: &discordgo.InteractionResponseData{
-				Content: "Bot restarted",
-			},
-		})
-		if err != nil {
-			log.Printf("Error responding to command: %v\n", err)
 		}
 	case "random":
 		log.Printf("Random command received from user: %s", i.Member.User.Username)
@@ -221,7 +243,7 @@ func AddCommands(s *discordgo.Session) {
 				Type:        discordgo.ApplicationCommandOptionInteger,
 				Name:        "channel",
 				Description: fmt.Sprintf("Channel ID (0-%d)", channelsLen),
-				Required:    false,
+				Required:    true,
 				MinValue:    &[]float64{0}[0],
 				MaxValue:    float64(channelsLen),
 			},
@@ -234,6 +256,26 @@ func AddCommands(s *discordgo.Session) {
 		return
 	}
 	log.Printf("tv command added: %v\n", c.Name)
+
+	youtubeCommand := &discordgo.ApplicationCommand{
+		Name:        "yt",
+		Description: "Play a Youtube video",
+		Options: []*discordgo.ApplicationCommandOption{
+			{
+				Type:        discordgo.ApplicationCommandOptionString,
+				Name:        "url",
+				Description: "A Youtube video URL",
+				Required:    true,
+			},
+		},
+	}
+
+	c, err = s.ApplicationCommandCreate(s.State.User.ID, "", youtubeCommand)
+	if err != nil {
+		log.Printf("Error creating slash command: %v\n", err)
+		return
+	}
+	log.Printf("yt command added: %v\n", c.Name)
 
 	// Define and create the Stop command
 	stopCommand := &discordgo.ApplicationCommand{
@@ -284,7 +326,7 @@ func AddCommands(s *discordgo.Session) {
 
 	randomCommand := &discordgo.ApplicationCommand{
 		Name:        "random",
-		Description: "Get a random TV channel",
+		Description: "Set a random TV channel",
 	}
 
 	c, err = s.ApplicationCommandCreate(s.State.User.ID, "", randomCommand)

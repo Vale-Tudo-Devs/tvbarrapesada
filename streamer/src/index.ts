@@ -43,10 +43,10 @@ const shutdownHandler = new ShutdownHandler(discordService, redisService);
 shutdownHandler.setupShutdownHandlers();
 
 async function handlePlay(title: string, url: string) {
-    const streamUdpConn = await discordService.joinVoiceChannel(streamOpts);
     const videoUrl = await YoutubeHelper.getVideoInternalUrl(url) ?? url;
-    await discordService.startStreaming(videoUrl, streamUdpConn);
+    const streamUdpConn = await discordService.joinVoiceChannel(streamOpts);
     discordService.setWatchingStatus(title);
+    await discordService.startStreaming(videoUrl, streamUdpConn);
     console.log(videoUrl);
 }
 
@@ -68,7 +68,7 @@ async function handleMessage({ command, title, url }: RedisMessage) {
     }
 
     if (command === "restart") {
-        process.exit(1);
+        process.exit(0);
     }
 }
 
