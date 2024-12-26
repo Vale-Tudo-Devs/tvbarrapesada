@@ -43,8 +43,8 @@ const shutdownHandler = new ShutdownHandler(discordService, redisService);
 shutdownHandler.setupShutdownHandlers();
 
 async function handlePlay(title: string, url: string) {
-    const streamUdpConn = await discordService.joinVoiceChannel(streamOpts);
     const videoUrl = await YoutubeHelper.getVideoInternalUrl(url) ?? url;
+    const streamUdpConn = await discordService.joinVoiceChannel(streamOpts);
     discordService.setWatchingStatus(title);
     await discordService.startStreaming(videoUrl, streamUdpConn);
     console.log(videoUrl);
