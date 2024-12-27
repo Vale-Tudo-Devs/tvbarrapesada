@@ -279,9 +279,9 @@ func (r *RedisStore) GetAllChannels(ctx context.Context) (string, error) {
 
 func channels2Csv(channels []*TvChannel) []byte {
 	var sb strings.Builder
-	sb.WriteString("ID,Name,URL\n")
+	sb.WriteString("ID,Name\n")
 	for _, channel := range channels {
-		sb.WriteString(fmt.Sprintf("%s,%s,%s,%s\n", channel.ID, channel.Name, channel.URL))
+		sb.WriteString(fmt.Sprintf("%s,%s\n", channel.ID, channel.Name))
 	}
 	return []byte(sb.String())
 }
