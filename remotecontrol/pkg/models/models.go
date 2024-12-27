@@ -6,6 +6,7 @@ import (
 	"log"
 	"math/rand"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -13,9 +14,10 @@ import (
 )
 
 type TvChannel struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
-	URL  string `json:"url"`
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Category string `json:"category"`
+	URL      string `json:"url"`
 }
 
 type RedisStore struct {
@@ -61,9 +63,10 @@ func (r *RedisStore) Save(ctx context.Context, tvChannel TvChannel) error {
 	// Set a hash with channel information
 	channelKey := fmt.Sprintf("%s:%s", r.Prefix, tvChannel.ID)
 	_, err := r.Client.HSet(ctx, channelKey, map[string]interface{}{
-		"id":   tvChannel.ID,
-		"name": strings.ToUpper(tvChannel.Name),
-		"url":  tvChannel.URL,
+		"id":       tvChannel.ID,
+		"name":     strings.ToUpper(tvChannel.Name),
+		"category": strings.ToUpper(tvChannel.Category),
+		"url":      tvChannel.URL,
 	}).Result()
 	if err != nil {
 		return err
@@ -74,7 +77,7 @@ func (r *RedisStore) Save(ctx context.Context, tvChannel TvChannel) error {
 		return err
 	}
 
-	// Set indexes for id, name and URL
+	// Set indexes for id, name, URL and category
 	idKey := fmt.Sprintf("%s:id:%s", r.Prefix, tvChannel.ID)
 	if err := r.Client.Set(ctx, idKey, tvChannel.ID, 0).Err(); err != nil {
 		return err
@@ -90,7 +93,13 @@ func (r *RedisStore) Save(ctx context.Context, tvChannel TvChannel) error {
 		return err
 	}
 
-	log.Printf("Saved channel %s", strings.ToUpper(tvChannel.Name))
+	// Add category index
+	categoryKey := fmt.Sprintf("%s:category:%s", r.Prefix, strings.ToUpper(tvChannel.Category))
+	if err := r.Client.SAdd(ctx, categoryKey, tvChannel.ID).Err(); err != nil {
+		return fmt.Errorf("failed to add category index: %w", err)
+	}
+
+	log.Printf("Saved channel %s in category %s", strings.ToUpper(tvChannel.Name), tvChannel.Category)
 	return nil
 }
 
@@ -240,4 +249,100 @@ func (r *RedisStore) GetCurrentChannel(ctx context.Context) (*TvChannel, error) 
 	}
 
 	return channel, nil
+}
+
+func (r *RedisStore) GetChannelsByCategory(ctx context.Context, category string) ([]*TvChannel, error) {
+	categoryKey := fmt.Sprintf("%s:category:%s", r.Prefix, strings.ToUpper(category))
+
+	// Get all channel IDs for category
+	channelIDs, err := r.Client.SMembers(ctx, categoryKey).Result()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get channel IDs: %w", err)
+	}
+
+	channels := make([]*TvChannel, 0, len(channelIDs))
+	for _, id := range channelIDs {
+		channelID, _ := strconv.ParseInt(id, 10, 64)
+		channel, err := r.GetChannelByID(ctx, channelID)
+		if err != nil {
+			continue
+		}
+		channels = append(channels, channel)
+	}
+
+	return channels, nil
+}
+
+func (r *RedisStore) GetCategories(ctx context.Context) ([]string, error) {
+	// Get all category keys
+	pattern := fmt.Sprintf("%s:category:*", r.Prefix)
+	keys, err := r.Client.Keys(ctx, pattern).Result()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get categories: %w", err)
+	}
+
+	log.Printf("Categories: %v\n", keys)
+
+	// Extract category names from keys
+	categories := make([]string, 0, len(keys))
+	prefix := fmt.Sprintf("%s:category:", r.Prefix)
+
+	for _, key := range keys {
+		category := strings.TrimPrefix(key, prefix)
+		if category != "" {
+			categories = append(categories, category)
+		}
+	}
+
+	// Sort categories alphabetically
+	sort.Strings(categories)
+
+	return categories, nil
+}
+
+// GetAllChannels retrieves all TV channels from Redis.
+// Returns a slice of TvChannel pointers and any error encountered.
+func (r *RedisStore) GetAllChannels(ctx context.Context) (string, error) {
+	pattern := fmt.Sprintf("%s:[0-9]*", r.Prefix)
+	var channels []*TvChannel
+
+	iter := r.Client.Scan(ctx, 0, pattern, 0).Iterator()
+	for iter.Next(ctx) {
+		data, err := r.Client.HGetAll(ctx, iter.Val()).Result()
+		if err != nil {
+			continue
+		}
+
+		if len(data) > 0 {
+			channel := &TvChannel{
+				ID:       data["id"],
+				Name:     data["name"],
+				Category: data["category"],
+				URL:      data["url"],
+			}
+			channels = append(channels, channel)
+		}
+	}
+
+	if err := iter.Err(); err != nil {
+		return "", fmt.Errorf("scan failed: %w", err)
+	}
+
+	channelsCsv := channels2Csv(channels)
+	fileName := fmt.Sprintf("/data/%s.csv", r.Prefix)
+	err := os.WriteFile(fileName, channelsCsv, 0644)
+	if err != nil {
+		fmt.Printf("Error writing channels to file: %v\n", err)
+	}
+	return fileName, nil
+
+}
+
+func channels2Csv(channels []*TvChannel) []byte {
+	var sb strings.Builder
+	sb.WriteString("ID,Name,Category,URL\n")
+	for _, channel := range channels {
+		sb.WriteString(fmt.Sprintf("%s,%s,%s,%s\n", channel.ID, channel.Name, channel.Category, channel.URL))
+	}
+	return []byte(sb.String())
 }

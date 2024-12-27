@@ -21,7 +21,10 @@ func main() {
 	}
 
 	if os.Getenv("SKIP_CHANNEL_DB_UPDATE") == "" {
-		playlist.UpdatePlaylist(ctx)
+		log.Printf("Updating TV playlist")
+		playlist.UpdatePlaylist(ctx, os.Getenv("TV_PLAYLIST_URL"), "channel")
+		log.Printf("Updating Movies playlist")
+		playlist.UpdatePlaylist(ctx, os.Getenv("MOVIES_PLAYLIST_URL"), "movies")
 	}
 
 	err = b.DiscordSession.Open()

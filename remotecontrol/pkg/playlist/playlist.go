@@ -3,11 +3,13 @@ package playlist
 import (
 	"bufio"
 	"context"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -24,18 +26,14 @@ type Playlist struct {
 }
 
 type PlaylistItem struct {
-	Name string
-	URL  string
+	Name     string
+	Category string
+	URL      string
 }
 
-func UpdatePlaylist(ctx context.Context) {
-	playlistUrl, ok := os.LookupEnv("PLAYLIST_URL")
-	if !ok {
-		log.Fatal("PLAYLIST_URL environment variable is required")
-	}
-
+func UpdatePlaylist(ctx context.Context, playlistUrl, prefix string) {
 	// Download playlist
-	filePath := filepath.Join(cacheDir, cacheFile)
+	filePath := filepath.Join(cacheDir, fmt.Sprintf("%s-%s", prefix, cacheFile))
 	file, err := downloadPlaylist(playlistUrl, filePath)
 	if err != nil {
 		log.Fatal("Failed to download playlist:", err)
@@ -66,9 +64,10 @@ func UpdatePlaylist(ctx context.Context) {
 		}
 		// Save item to Redis
 		s.Save(ctx, models.TvChannel{
-			ID:   strconv.Itoa(i),
-			Name: item.Name,
-			URL:  item.URL,
+			ID:       strconv.Itoa(i),
+			Name:     item.Name,
+			Category: item.Category,
+			URL:      item.URL,
 		})
 	}
 }
@@ -79,16 +78,24 @@ func parsePlaylist(filePath string) (*Playlist, error) {
 		return nil, err
 	}
 	defer file.Close()
+
 	playlist := &Playlist{Items: make([]PlaylistItem, 0)}
 	scanner := bufio.NewScanner(file)
 
 	var currentItem PlaylistItem
+	categoryRegex := regexp.MustCompile(`group-title="([^"]*)"`)
+
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 		if line == "" || line == "#EXTM3U" {
 			continue
 		}
 		if strings.HasPrefix(line, "#EXTINF:") {
+			// Extract category
+			if matches := categoryRegex.FindStringSubmatch(line); len(matches) > 1 {
+				currentItem.Category = matches[1]
+			}
+			// Extract name
 			parts := strings.Split(line, ",")
 			if len(parts) > 1 {
 				currentItem.Name = parts[1]
@@ -122,7 +129,7 @@ func downloadPlaylist(url, filePath string) (string, error) {
 	}
 
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		log.Printf("Cache file not found, downloading from PLAYLIST_URL environment variable")
+		log.Printf("Cache file not found, downloading from environment variable")
 
 		resp, err := http.Get(url)
 		if err != nil {

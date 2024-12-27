@@ -213,128 +213,36 @@ func tvHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		if err != nil {
 			log.Printf("Error responding to command: %v\n", err)
 		}
+	case "catalog":
+		log.Printf("Catalog command received from user: %s", i.Member.User.Username)
+		csvPath, err := r.GetAllChannels(ctx)
+		if err != nil {
+			log.Printf("Error getting all channels: %v\n", err)
+		}
+
+		file, err := os.Open(csvPath)
+		if err != nil {
+			fmt.Printf("failed to open file: %w", err)
+		}
+		defer file.Close()
+
+		err = s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseChannelMessageWithSource,
+			Data: &discordgo.InteractionResponseData{
+				Content: "Here's the channel catalog:",
+				Files: []*discordgo.File{
+					{
+						Name:        "channels.csv",
+						ContentType: "text/csv",
+						Reader:      file,
+					},
+				},
+			},
+		})
+
 	default:
 		log.Printf("Unknown command: %s\n", i.ApplicationCommandData().Name)
 	}
-}
-
-func AddCommands(s *discordgo.Session) {
-	ctx := context.Background()
-	r, err := models.NewAuthenticatedRedisClient(ctx)
-	if err != nil {
-		log.Printf("Error creating redis client: %v\n", err)
-		return
-	}
-
-	// Define and create the TV command
-	r.Prefix = "channel"
-	channelsLen, err := r.GetChannelCounter(ctx)
-	if err != nil {
-		log.Printf("Error getting channel count: %v\n", err)
-		return
-	}
-	channelsLen-- // The counter starts at 0
-
-	tvCommand := &discordgo.ApplicationCommand{
-		Name:        "tv",
-		Description: "Set the TV channel",
-		Options: []*discordgo.ApplicationCommandOption{
-			{
-				Type:        discordgo.ApplicationCommandOptionInteger,
-				Name:        "channel",
-				Description: fmt.Sprintf("Channel ID (0-%d)", channelsLen),
-				Required:    true,
-				MinValue:    &[]float64{0}[0],
-				MaxValue:    float64(channelsLen),
-			},
-		},
-	}
-
-	c, err := s.ApplicationCommandCreate(s.State.User.ID, "", tvCommand)
-	if err != nil {
-		log.Printf("Error creating slash command: %v\n", err)
-		return
-	}
-	log.Printf("tv command added: %v\n", c.Name)
-
-	youtubeCommand := &discordgo.ApplicationCommand{
-		Name:        "yt",
-		Description: "Play a Youtube video",
-		Options: []*discordgo.ApplicationCommandOption{
-			{
-				Type:        discordgo.ApplicationCommandOptionString,
-				Name:        "url",
-				Description: "A Youtube video URL",
-				Required:    true,
-			},
-		},
-	}
-
-	c, err = s.ApplicationCommandCreate(s.State.User.ID, "", youtubeCommand)
-	if err != nil {
-		log.Printf("Error creating slash command: %v\n", err)
-		return
-	}
-	log.Printf("yt command added: %v\n", c.Name)
-
-	// Define and create the Stop command
-	stopCommand := &discordgo.ApplicationCommand{
-		Name:        "stop",
-		Description: "Stop the TV",
-	}
-
-	c, err = s.ApplicationCommandCreate(s.State.User.ID, "", stopCommand)
-	if err != nil {
-		log.Printf("Error creating slash command: %v\n", err)
-		return
-	}
-	log.Printf("stop command added: %v\n", c.Name)
-
-	// Define and create the Search command
-	searchCommand := &discordgo.ApplicationCommand{
-		Name:        "search",
-		Description: "Search for a TV channel",
-		Options: []*discordgo.ApplicationCommandOption{
-			{
-				Type:        discordgo.ApplicationCommandOptionString,
-				Name:        "query",
-				Description: "Search for a channel, you can use multiple words",
-				Required:    true,
-			},
-		},
-	}
-
-	c, err = s.ApplicationCommandCreate(s.State.User.ID, "", searchCommand)
-	if err != nil {
-		log.Printf("Error creating slash command: %v\n", err)
-		return
-	}
-	log.Printf("search command added: %v\n", c.Name)
-
-	// Define and create restart command
-	restartCommand := &discordgo.ApplicationCommand{
-		Name:        "restart",
-		Description: "Restart the bot",
-	}
-
-	c, err = s.ApplicationCommandCreate(s.State.User.ID, "", restartCommand)
-	if err != nil {
-		log.Printf("Error creating slash command: %v\n", err)
-		return
-	}
-	log.Printf("restart command added: %v\n", c.Name)
-
-	randomCommand := &discordgo.ApplicationCommand{
-		Name:        "random",
-		Description: "Set a random TV channel",
-	}
-
-	c, err = s.ApplicationCommandCreate(s.State.User.ID, "", randomCommand)
-	if err != nil {
-		log.Printf("Error creating slash command: %v\n", err)
-		return
-	}
-	log.Printf("random command added: %v\n", c.Name)
 }
 
 func DeleteCommands(s *discordgo.Session) {
