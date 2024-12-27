@@ -241,3 +241,47 @@ func (r *RedisStore) GetCurrentChannel(ctx context.Context) (*TvChannel, error) 
 
 	return channel, nil
 }
+
+func (r *RedisStore) GetAllChannels(ctx context.Context) (string, error) {
+	pattern := fmt.Sprintf("%s:[0-9]*", r.Prefix)
+	var channels []*TvChannel
+
+	iter := r.Client.Scan(ctx, 0, pattern, 0).Iterator()
+	for iter.Next(ctx) {
+		data, err := r.Client.HGetAll(ctx, iter.Val()).Result()
+		if err != nil {
+			continue
+		}
+
+		if len(data) > 0 {
+			channel := &TvChannel{
+				ID:   data["id"],
+				Name: data["name"],
+				URL:  data["url"],
+			}
+			channels = append(channels, channel)
+		}
+	}
+
+	if err := iter.Err(); err != nil {
+		return "", fmt.Errorf("scan failed: %w", err)
+	}
+
+	channelsCsv := channels2Csv(channels)
+	fileName := fmt.Sprintf("/data/%s.csv", r.Prefix)
+	err := os.WriteFile(fileName, channelsCsv, 0644)
+	if err != nil {
+		fmt.Printf("Error writing channels to file: %v\n", err)
+	}
+	return fileName, nil
+
+}
+
+func channels2Csv(channels []*TvChannel) []byte {
+	var sb strings.Builder
+	sb.WriteString("ID,Name,URL\n")
+	for _, channel := range channels {
+		sb.WriteString(fmt.Sprintf("%s,%s,%s,%s\n", channel.ID, channel.Name, channel.URL))
+	}
+	return []byte(sb.String())
+}
