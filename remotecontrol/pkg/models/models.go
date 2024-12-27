@@ -257,7 +257,6 @@ func (r *RedisStore) GetAllChannels(ctx context.Context) (string, error) {
 			channel := &TvChannel{
 				ID:   data["id"],
 				Name: data["name"],
-				URL:  data["url"],
 			}
 			channels = append(channels, channel)
 		}
@@ -268,7 +267,7 @@ func (r *RedisStore) GetAllChannels(ctx context.Context) (string, error) {
 	}
 
 	channelsCsv := channels2Csv(channels)
-	fileName := fmt.Sprintf("/data/%s.csv", r.Prefix)
+	fileName := fmt.Sprintf("/data/%s-catalog.csv", r.Prefix)
 	err := os.WriteFile(fileName, channelsCsv, 0644)
 	if err != nil {
 		fmt.Printf("Error writing channels to file: %v\n", err)
