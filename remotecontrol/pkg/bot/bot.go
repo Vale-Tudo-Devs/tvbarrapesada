@@ -213,8 +213,56 @@ func tvHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
 		if err != nil {
 			log.Printf("Error responding to command: %v\n", err)
 		}
+	case "catalog":
+		log.Printf("Catalog command received from user: %s", i.Member.User.Username)
+		err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
+			Type: discordgo.InteractionResponseDeferredChannelMessageWithSource,
+		})
+		if err != nil {
+			log.Printf("Error acknowledging interaction: %v\n", err)
+			return
+		}
+
+		r.Prefix = "channel"
+		csvPath, err := r.GetAllChannels(ctx)
+		if err != nil {
+			log.Printf("Error getting all channels: %v\n", err)
+			sendFollowup(s, i, "Failed to process command")
+			return
+		}
+
+		file, err := os.Open(csvPath)
+		if err != nil {
+			log.Printf("Error opening file: %v\n", err)
+			sendFollowup(s, i, "Failed to process command")
+			return
+		}
+		defer file.Close()
+
+		_, err = s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
+			Content: "Here's the channel catalog:",
+			Files: []*discordgo.File{
+				{
+					Name:        "channels.csv",
+					ContentType: "text/csv",
+					Reader:      file,
+				},
+			},
+		})
+		if err != nil {
+			log.Printf("Error responding to command: %v\n", err)
+		}
 	default:
 		log.Printf("Unknown command: %s\n", i.ApplicationCommandData().Name)
+	}
+}
+
+func sendFollowup(s *discordgo.Session, i *discordgo.InteractionCreate, content string) {
+	_, err := s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
+		Content: content,
+	})
+	if err != nil {
+		log.Printf("Error sending follow-up: %v\n", err)
 	}
 }
 
@@ -335,6 +383,18 @@ func AddCommands(s *discordgo.Session) {
 		return
 	}
 	log.Printf("random command added: %v\n", c.Name)
+
+	catalogCommand := &discordgo.ApplicationCommand{
+		Name:        "catalog",
+		Description: "Download a CSV with all TV channels",
+	}
+
+	c, err = s.ApplicationCommandCreate(s.State.User.ID, "", catalogCommand)
+	if err != nil {
+		log.Printf("Error creating slash command: %v\n", err)
+		return
+	}
+	log.Printf("catalog command added: %v\n", c.Name)
 }
 
 func DeleteCommands(s *discordgo.Session) {
