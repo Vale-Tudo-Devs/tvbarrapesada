@@ -237,7 +237,7 @@ func tvHandler(s *discordgo.Session, i *discordgo.InteractionCreate) {
 			sendFollowup(s, i, "Failed to process command")
 			return
 		}
-		defer file.Close()
+		defer os.Remove(csvPath)
 
 		_, err = s.FollowupMessageCreate(i.Interaction, true, &discordgo.WebhookParams{
 			Content: "Here's the channel catalog:",
